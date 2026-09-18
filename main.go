@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 )
@@ -22,23 +23,6 @@ func main() {
 		fmt.Println("Error reading directory:", err)
 		return
 	}
-
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		if strings.HasSuffix(entry.Name(), ".jwt") {
-			fmt.Println("Found token file:", entry.Name())
-		}
-	}
-
-	data, err := os.ReadFile("tokens/attack_kid.jwt")
-	if err != nil {
-		fmt.Println("Error reading file:", err)
-		return
-	}
-
-	tokenString := strings.TrimSpace(string(data))
 
 	allowedAlgs := []string{"HS256"}
 	requiredClaims := []string{"sub", "exp"}
@@ -70,22 +54,41 @@ func main() {
 		return []byte(secret), nil
 	}
 
-	token, err := jwt.Parse(tokenString, keyFunc)
-	if err != nil {
-		fmt.Println("Invalid:", err)
-	} else {
-		claims, _ := token.Claims.(jwt.MapClaims)
-		missing := ""
-		for _, rc := range requiredClaims {
-			if _, exists := claims[rc]; !exists {
-				missing = rc
-			}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
 		}
-		if missing != "" {
-			fmt.Println("Invalid: missing required claim:", missing)
-		} else {
-			fmt.Println("Valid")
-			fmt.Println("Claims:", claims)
+		if strings.HasSuffix(entry.Name(), ".jwt") {
+			fmt.Println("Found token file:", entry.Name())
+
+			path := "tokens/" + entry.Name()
+
+			data, err := os.ReadFile(path)
+			if err != nil {
+				fmt.Println("Error reading file:", err)
+				continue
+			}
+
+			tokenString := strings.TrimSpace(string(data))
+
+			token, err := jwt.Parse(tokenString, keyFunc)
+			if err != nil {
+				fmt.Println("Invalid:", err)
+			} else {
+				claims, _ := token.Claims.(jwt.MapClaims)
+				missing := ""
+				for _, rc := range requiredClaims {
+					if _, exists := claims[rc]; !exists {
+						missing = rc
+					}
+				}
+				if missing != "" {
+					fmt.Println("Invalid: missing required claim:", missing)
+				} else {
+					fmt.Println("Valid")
+					fmt.Println("Claims:", claims)
+				}
+			}
 		}
 	}
 }
