@@ -66,7 +66,7 @@ Currently reads every `.jwt` file in a `tokens/` folder (created manually) and v
 ## Related
 
 - [jwt-attack-lab](https://github.com/Snitch-1302/jwt-attack-lab) — the companion project this validator defends against.
-- Hashnode write-up: *(link added once published)*
+- Hashnode write-up: https://quietbytes.hashnode.dev/concurrent-jwt-validator-go
 
 ## Disclaimer
 
