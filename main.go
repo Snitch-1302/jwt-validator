@@ -13,6 +13,7 @@ import (
 type ValidationResult struct {
 	Filename string
 	Message  string
+	Valid    bool
 }
 
 func main() {
@@ -37,22 +38,26 @@ func main() {
 	keyFunc := func(token *jwt.Token) (interface{}, error) {
 		alg := token.Method.Alg()
 		algOK := false
+
 		for _, a := range allowedAlgs {
 			if alg == a {
 				algOK = true
 			}
 		}
+
 		if !algOK {
 			return nil, fmt.Errorf("algorithm not allowed: %v", alg)
 		}
 
 		kid, _ := token.Header["kid"].(string)
 		kidOK := false
+
 		for _, k := range allowedKids {
 			if kid == k {
 				kidOK = true
 			}
 		}
+
 		if !kidOK {
 			return nil, fmt.Errorf("kid not allowed: %v", kid)
 		}
@@ -67,6 +72,7 @@ func main() {
 		if entry.IsDir() {
 			continue
 		}
+
 		if strings.HasSuffix(entry.Name(), ".jwt") {
 
 			wg.Add(1)
@@ -82,6 +88,7 @@ func main() {
 					results <- ValidationResult{
 						Filename: filename,
 						Message:  "Error reading file: " + err.Error(),
+						Valid:    false,
 					}
 					return
 				}
@@ -93,6 +100,7 @@ func main() {
 					results <- ValidationResult{
 						Filename: filename,
 						Message:  "Invalid: " + err.Error(),
+						Valid:    false,
 					}
 					return
 				}
@@ -100,6 +108,7 @@ func main() {
 				claims, _ := token.Claims.(jwt.MapClaims)
 
 				missing := ""
+
 				for _, rc := range requiredClaims {
 					if _, exists := claims[rc]; !exists {
 						missing = rc
@@ -110,6 +119,7 @@ func main() {
 					results <- ValidationResult{
 						Filename: filename,
 						Message:  "Invalid: missing required claim: " + missing,
+						Valid:    false,
 					}
 					return
 				}
@@ -117,6 +127,7 @@ func main() {
 				results <- ValidationResult{
 					Filename: filename,
 					Message:  "Valid",
+					Valid:    true,
 				}
 			}(entry)
 		}
@@ -125,7 +136,24 @@ func main() {
 	wg.Wait()
 	close(results)
 
+	var allResults []ValidationResult
+
 	for r := range results {
-		fmt.Println(r.Filename, r.Message)
+		allResults = append(allResults, r)
 	}
+
+	validCount := 0
+
+	for _, r := range allResults {
+		status := "INVALID"
+
+		if r.Valid {
+			status = "VALID"
+			validCount++
+		}
+
+		fmt.Printf("[%s] %-20s %s\n", status, r.Filename, r.Message)
+	}
+
+	fmt.Printf("\n%d/%d tokens valid\n", validCount, len(allResults))
 }
