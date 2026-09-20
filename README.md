@@ -44,7 +44,7 @@ JWT_SECRET=mysecret
 go run main.go
 ```
 
-Currently reads every `.jwt` file in a `tokens/` folder (created manually) and validates every .jwt file found in the directory concurrently and prints a per-token report with a final valid/invalid summary.
+Reads every .jwt file in a tokens/ folder (created manually), validates each one concurrently, and prints a per-token report with a final valid/invalid summary.
 
 ## Validation checks implemented
 
@@ -56,7 +56,7 @@ Currently reads every `.jwt` file in a `tokens/` folder (created manually) and v
 - [x] **Secret loaded from environment** — via `.env` (using `godotenv`), not hardcoded in source. `.env` is git-ignored.
 - [x] **Directory-wide validation** — every discovered `.jwt` file is validated, not a single hardcoded path.
 - [x] **Concurrency** — one goroutine per token, synchronized with a `sync.WaitGroup`, results collected via a buffered channel. Verified against real forged tokens pulled from `jwt-attack-lab`'s `attack_none.py` and `attack_kid.py` — both correctly rejected, with the exact reason surfaced in the error message.
-- [x] **Per-token report output** — a clean, aggregated summary of every token's validation result (current output is functional but unformatted).
+- [x] **Per-token report output** — a clean, aligned summary showing each token's status (`VALID`/`INVALID`) and reason, plus a final count of how many tokens passed.
 
 ## Not covered (and why)
 
