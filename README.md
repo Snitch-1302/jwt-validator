@@ -2,7 +2,7 @@
 
 A command-line tool that reads a directory of JWT files and validates each one concurrently — checking signature, expiry, algorithm whitelist, `kid` allowlist, and required claims. Built as a hands-on way to learn Go's concurrency model, and directly paired with [jwt-attack-lab](https://github.com/Snitch-1302/jwt-attack-lab): every defense here exists to reject a specific forged token from that project.
 
-> Status: **in progress**. Single-token validation logic, directory-wide processing, and concurrent validation via goroutines/WaitGroup/channel are all complete and tested against real forged tokens from the attack lab. Only final report formatting remains. This README reflects the current state of the code.
+> Status: v1 complete. All planned validation checks, directory-wide concurrent processing, and the final report are implemented and tested against real forged tokens from the attack lab.
 
 ## Why this exists
 
@@ -12,7 +12,7 @@ The attack lab spent six stages breaking JWT verification in a Flask API. This p
 
 - Go 1.21
 - [`golang-jwt/jwt/v5`](https://github.com/golang-jwt/jwt) — JWT parsing and verification
-- Standard library: `os`, `strings`, `sync` (concurrency, not yet added)
+- Standard library: `os`, `strings`, `sync` 
 
 ## Project structure
 
@@ -44,7 +44,7 @@ JWT_SECRET=mysecret
 go run main.go
 ```
 
-Currently reads every `.jwt` file in a `tokens/` folder (created manually) and validates the first one found against a hardcoded path — directory-wide looping is the next stage.
+Currently reads every `.jwt` file in a `tokens/` folder (created manually) and validates every .jwt file found in the directory concurrently and prints a per-token report with a final valid/invalid summary.
 
 ## Validation checks implemented
 
