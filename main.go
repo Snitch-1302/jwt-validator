@@ -4,10 +4,16 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/joho/godotenv"
 )
+
+type ValidationResult struct {
+	Filename string
+	Message  string
+}
 
 func main() {
 
@@ -54,41 +60,72 @@ func main() {
 		return []byte(secret), nil
 	}
 
+	var wg sync.WaitGroup
+	results := make(chan ValidationResult, len(entries))
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
 		}
 		if strings.HasSuffix(entry.Name(), ".jwt") {
-			fmt.Println("Found token file:", entry.Name())
 
-			path := "tokens/" + entry.Name()
+			wg.Add(1)
 
-			data, err := os.ReadFile(path)
-			if err != nil {
-				fmt.Println("Error reading file:", err)
-				continue
-			}
+			go func(entry os.DirEntry) {
+				defer wg.Done()
 
-			tokenString := strings.TrimSpace(string(data))
+				filename := entry.Name()
+				path := "tokens/" + filename
 
-			token, err := jwt.Parse(tokenString, keyFunc)
-			if err != nil {
-				fmt.Println("Invalid:", err)
-			} else {
+				data, err := os.ReadFile(path)
+				if err != nil {
+					results <- ValidationResult{
+						Filename: filename,
+						Message:  "Error reading file: " + err.Error(),
+					}
+					return
+				}
+
+				tokenString := strings.TrimSpace(string(data))
+
+				token, err := jwt.Parse(tokenString, keyFunc)
+				if err != nil {
+					results <- ValidationResult{
+						Filename: filename,
+						Message:  "Invalid: " + err.Error(),
+					}
+					return
+				}
+
 				claims, _ := token.Claims.(jwt.MapClaims)
+
 				missing := ""
 				for _, rc := range requiredClaims {
 					if _, exists := claims[rc]; !exists {
 						missing = rc
 					}
 				}
+
 				if missing != "" {
-					fmt.Println("Invalid: missing required claim:", missing)
-				} else {
-					fmt.Println("Valid")
-					fmt.Println("Claims:", claims)
+					results <- ValidationResult{
+						Filename: filename,
+						Message:  "Invalid: missing required claim: " + missing,
+					}
+					return
 				}
-			}
+
+				results <- ValidationResult{
+					Filename: filename,
+					Message:  "Valid",
+				}
+			}(entry)
 		}
+	}
+
+	wg.Wait()
+	close(results)
+
+	for r := range results {
+		fmt.Println(r.Filename, r.Message)
 	}
 }
